@@ -53,7 +53,7 @@ spring:
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/search_trek?allowMultiQueries=true&serverTimezone=GMT%2B8
+    url: jdbc:mysql://139.196.154.217:3306/search_trek?allowMultiQueries=true&serverTimezone=GMT%2B8
     type: com.alibaba.druid.pool.DruidDataSource
     druid:
       # 初始连接数

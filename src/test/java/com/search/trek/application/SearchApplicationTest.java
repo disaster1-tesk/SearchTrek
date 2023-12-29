@@ -5,12 +5,16 @@ import com.search.trek.infrastructure.client.ai.minimax.entity.embedding.Embeddi
 import com.search.trek.infrastructure.client.ai.minimax.entity.embedding.EmbeddingRes;
 import com.search.trek.infrastructure.client.ai.minimax.enums.Model;
 import com.search.trek.infrastructure.client.ai.minimax.enums.Type;
+import lombok.SneakyThrows;
 import org.assertj.core.util.Lists;
 import org.junit.Before;
 import org.junit.Test;
+import org.redisson.api.RFuture;
 import org.redisson.api.RJsonBucket;
 import org.redisson.api.RSearch;
 import org.redisson.api.RedissonClient;
+import org.redisson.api.search.aggregate.AggregationOptions;
+import org.redisson.api.search.aggregate.AggregationResult;
 import org.redisson.api.search.index.FieldIndex;
 import org.redisson.api.search.index.IndexOptions;
 import org.redisson.api.search.index.IndexType;
@@ -26,8 +30,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import static org.redisson.api.search.index.VectorTypeParam.Type.FLOAT32;
+import static org.redisson.api.search.index.VectorTypeParam.Type.FLOAT64;
 
 
 public class SearchApplicationTest extends BaseTest {
@@ -41,6 +46,7 @@ public class SearchApplicationTest extends BaseTest {
     }
 
     @Test
+    @SneakyThrows
     public void search() {
         EmbeddingRes embeddings = client.embeddings(EmbeddingReq.builder()
                 .model(Model.EM_BO_01.getName())
@@ -60,10 +66,13 @@ public class SearchApplicationTest extends BaseTest {
                 .vectors(embeddings.getVectors().get(0))
                 .build());
 
+        RFuture<SearchContext> async = b.getAsync();
+        SearchContext searchContext1 = async.get();
+        System.out.println("searchContext1 = " + searchContext1);
         HashMap<String, Object> params = new HashMap<>();
         params.put("value", b.get().getVectors());
         SearchResult r = rSearch.search("idx",
-                String.format("(*)=>[KNN %d @vectors $value]", 3),
+                String.format("*=>[KNN 10 @vectors $value]"),
                 QueryOptions.defaults()
                         .params(params)
                         .returnAttributes(
@@ -85,6 +94,12 @@ public class SearchApplicationTest extends BaseTest {
                         .sortBy("vectors")
                         .limit(1, 10)
         );
+        AggregationResult aggregate = rSearch.aggregate("idx", "*", AggregationOptions.defaults()
+                .load("vectors", "context", "title"));
+        List<Map<String, Object>> attributes = aggregate.getAttributes();
+        for (Map<String, Object> attribute : attributes) {
+            System.out.println("attribute = " + attribute);
+        }
         List<Document> documents = r.getDocuments();
         List<Document> documents1 = search1.getDocuments();
         System.out.println("documents = " + documents);
@@ -101,16 +116,45 @@ public class SearchApplicationTest extends BaseTest {
     public void createIndex() {
         rSearch.createIndex("idx", IndexOptions.defaults()
                         .on(IndexType.JSON)
-                        .prefix(Arrays.asList("test:")),
+                        .prefix(Arrays.asList("doc:")),
                 FieldIndex.flatVector("$..vectors")
                         .as("vectors")
-                        .type(FLOAT32)
-                        .dim(768)
+                        .type(FLOAT64)
+                        .dim(1536)
                         .distance(VectorDistParam.DistanceMetric.COSINE),
                 FieldIndex.text("$..context").as("context"),
                 FieldIndex.text("$..title").as("title")
         );
+
+        rSearch.createIndex("my_idx", IndexOptions.defaults()
+                        .on(IndexType.JSON)
+                        .prefix(Arrays.asList("doc:")),
+                FieldIndex.hnswVector("$..vectors")
+                        .as("vectors")
+                        .type(FLOAT64)
+                        .dim(1536)
+                        .distance(VectorDistParam.DistanceMetric.COSINE),
+                FieldIndex.text("$..context").as("context")
+        );
     }
+
+    @Test
+    public void createData(){
+        RJsonBucket<Map> doc = redisson.getJsonBucket("doc", new JacksonCodec<>(Map.class));
+        HashMap<String, String> param = new HashMap<>();
+        param.put("context","怎么处理线上问题？问老员工");
+        doc.set("context","怎么处理线上问题？问老员工");
+        EmbeddingRes embeddings = client.embeddings(EmbeddingReq.builder()
+                .model(Model.EM_BO_01.getName())
+                .type(Type.DB.getName())
+                .texts(Lists.list("怎么处理线上问题?"))
+                .build());
+        param.put("vectors",embeddings.getVectors().get(0).toString());
+        doc.set("vectors",embeddings.getVectors().get(0));
+        Map map = doc.get();
+        System.out.println("map = " + map);
+    }
+
 
     @Test
     public void jsonBucket() {
