@@ -1,15 +1,18 @@
 package com.search.trek.infrastructure.client.ai.minimax;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import com.search.trek.infrastructure.client.ai.AIException;
+import com.search.trek.infrastructure.client.ai.CommonError;
 import com.search.trek.infrastructure.client.ai.StandardOpenApiClient;
 import com.search.trek.infrastructure.client.ai.minimax.constant.MinimaxConstant;
 import com.search.trek.infrastructure.client.ai.minimax.entity.chat.ChatReq;
 import com.search.trek.infrastructure.client.ai.minimax.entity.chat.ChatRes;
 import com.search.trek.infrastructure.client.ai.minimax.entity.embedding.EmbeddingReq;
 import com.search.trek.infrastructure.client.ai.minimax.entity.embedding.EmbeddingRes;
-import com.search.trek.infrastructure.client.ai.AIException;
-import com.search.trek.infrastructure.client.ai.CommonError;
+import com.search.trek.infrastructure.client.ai.minimax.entity.text_to_speech.TextToSpeechReq;
+import com.search.trek.infrastructure.client.ai.minimax.entity.text_to_speech.TextToSpeechRes;
 import com.search.trek.infrastructure.client.ai.minimax.interceptor.HeaderInterceptor;
 import com.search.trek.infrastructure.client.ai.minimax.interceptor.ResponseValidateInterceptor;
 import lombok.*;
@@ -22,7 +25,10 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
+import java.io.File;
+import java.net.URL;
 import java.util.Objects;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -58,7 +64,6 @@ public class MiniMaxApiClient extends StandardOpenApiClient {
     }
 
 
-
     @SneakyThrows
     @Deprecated
     public void chatCompletion(ChatReq chatReq, EventSourceListener eventSourceListener) {
@@ -73,7 +78,7 @@ public class MiniMaxApiClient extends StandardOpenApiClient {
                     .addPathSegment("v1")
                     .addPathSegment("text")
                     .addPathSegment("chatcompletion_pro")
-                    .addQueryParameter("GroupId", String.valueOf(MinimaxConstant.MINI_MAX_GROUP))
+                    .addQueryParameter("GroupId", MinimaxConstant.MINI_MAX_GROUP)
                     .build();
             RequestBody requestBody = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), JSONUtil.toJsonStr(chatReq));
             Request request = new Request.Builder()
@@ -100,6 +105,34 @@ public class MiniMaxApiClient extends StandardOpenApiClient {
         return this.miniMaxApi.embeddings(embeddingReq).blockingGet();
     }
 
+    public TextToSpeechRes t2SpeechPro(TextToSpeechReq textToSpeechReq){
+       return this.miniMaxApi.t2aPro(textToSpeechReq).blockingGet();
+    }
+
+    @SneakyThrows
+    public TextToSpeechRes textToSpeech(TextToSpeechReq textToSpeechReq) {
+        RequestBody requestBody = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), JSONUtil.toJsonStr(textToSpeechReq));
+        Request request = new Request.Builder()
+                .url(this.apiHost + "/v1/text_to_speech")
+                .header("GroupId", MinimaxConstant.MINI_MAX_GROUP)
+                .post(requestBody)
+                .build();
+        Response response = this.okHttpClient.newCall(request).execute();
+        ResponseBody body = response.body();
+        MediaType mediaType = body.contentType();
+        String type = mediaType.type();
+        if (!type.equals("audio/mpeg")) return JSONUtil.toBean(body.string(),TextToSpeechRes.class);
+        URL resource = this.getClass().getResource("/");
+        String file1 = resource.getFile();
+        File file = new File(file1 + "/tmp/text_to_speech" + UUID.randomUUID() + ".mp3");
+        File content = FileUtil.writeFromStream(body.byteStream(), file);
+        TextToSpeechRes textToSpeechRes = TextToSpeechRes.builder()
+                .content(content)
+                .build();
+        file.deleteOnExit();
+        return textToSpeechRes;
+    }
+
     public static final class Builder {
         /**
          * api请求地址，结尾处有斜杠
@@ -111,12 +144,7 @@ public class MiniMaxApiClient extends StandardOpenApiClient {
         private OkHttpClient okHttpClient;
 
         public Builder init() {
-            HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
-                @Override
-                public void log(String message) {
-                    log.info("OkHttp-------->:{}", message);
-                }
-            });
+            HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor(message -> log.info("OkHttp-------->:{}", message));
             //！！！！千万别再生产或者测试环境打开BODY级别日志！！！！
             //！！！生产或者测试环境建议设置为这三种级别：NONE,BASIC,HEADERS,！！！
             httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.HEADERS);

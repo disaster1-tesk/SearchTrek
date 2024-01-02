@@ -2,6 +2,7 @@ package com.search.trek.infrastructure.client.ai.minimax;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.alibaba.fastjson.JSON;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.search.trek.infrastructure.client.BaseTest;
 import com.search.trek.infrastructure.client.ai.minimax.entity.chat.ChatReq;
@@ -9,6 +10,8 @@ import com.search.trek.infrastructure.client.ai.minimax.entity.chat.ChatRes;
 import com.search.trek.infrastructure.client.ai.minimax.entity.embedding.EmbeddingReq;
 import com.search.trek.infrastructure.client.ai.minimax.entity.embedding.EmbeddingRes;
 import com.search.trek.infrastructure.client.ai.minimax.entity.knowledge.CreateKnowledgeReq;
+import com.search.trek.infrastructure.client.ai.minimax.entity.text_to_speech.TextToSpeechReq;
+import com.search.trek.infrastructure.client.ai.minimax.entity.text_to_speech.TextToSpeechRes;
 import com.search.trek.infrastructure.client.ai.minimax.enums.Model;
 import com.search.trek.infrastructure.client.ai.minimax.enums.Type;
 import com.search.trek.infrastructure.client.ai.minimax.listener.MiniMaxChatResListener;
@@ -142,5 +145,72 @@ public class MiniMaxApiClientTest extends BaseTest {
         jsonObject.putOpt("knowledge_base_id", "");
         JSONObject entries = miniMaxApi.queryKnowledge(jsonObject).blockingGet();
         System.out.println("entries = " + entries);
+    }
+
+
+    @Test
+    public void textToSpeechTest(){
+        String json = "{\n" +
+                "    \"voice_id\": \"male-qn-qingse\", \n" +
+                "    \"text\": \"你好，disaster爸爸\", \n" +
+                "    \"model\": \"speech-01\",\n" +
+                "    \"speed\": 1.0,\n" +
+                "    \"vol\": 1.0,\n" +
+                "    \"pitch\": 0,\n" +
+                "    \"timber_weights\": [\n" +
+                "        {\n" +
+                "            \"voice_id\": \"male-qn-qingse\",\n" +
+                "            \"weight\": 1\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"voice_id\": \"female-shaonv\",\n" +
+                "            \"weight\": 1\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"voice_id\": \"female-yujie\",\n" +
+                "            \"weight\": 1\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"voice_id\": \"audiobook_male_2\",\n" +
+                "            \"weight\": 1\n" +
+                "        }\n" +
+                "    ]\n" +
+                "}";
+        TextToSpeechRes textToSpeechRes = client.textToSpeech(JSON.parseObject(json, TextToSpeechReq.class));
+        System.out.println("textToSpeechRes = " + textToSpeechRes);
+    }
+
+    @Test
+    public void t2SpeechPro(){
+        String json = "{\n" +
+                "    \"voice_id\": \"male-qn-qingse\",\n" +
+                "    \"text\": \"夕阳西下，余晖洒落在湖面上，波光粼粼，宛如一片金色的绸缎。湖畔，一棵老树静静地伫立着，枝桠上栖息着一群鸟儿，在夕阳的余晖下唱着欢快的歌。一个小男孩坐在树下，望着湖面，思绪万千。他想起了今天发生的一切，也想起了自己的梦想。他知道，实现梦想的道路是漫长的，但他并不害怕，他会一直努力，直到梦想成真。\",\n"  +
+                "    \"model\": \"speech-01\",\n" +
+                "    \"speed\": 1.0,\n" +
+                "    \"vol\": 1.0,\n" +
+                "    \"pitch\": 0,\n" +
+                "    \"audio_sample_rate\": 24000,\n" +
+                "    \"bitrate\": 128000,\n" +
+                "    \"timber_weights\": [\n" +
+                "        {\n" +
+                "            \"voice_id\": \"male-qn-qingse\",\n" +
+                "            \"weight\": 1\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"voice_id\": \"female-shaonv\",\n" +
+                "            \"weight\": 1\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"voice_id\": \"female-yujie\",\n" +
+                "            \"weight\": 1\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"voice_id\": \"audiobook_male_2\",\n" +
+                "            \"weight\": 1\n" +
+                "        }\n" +
+                "    ]\n" +
+                "}";
+        TextToSpeechRes textToSpeechRes = client.t2SpeechPro(JSON.parseObject(json, TextToSpeechReq.class));
+        System.out.println("textToSpeechRes = " + textToSpeechRes);
     }
 }

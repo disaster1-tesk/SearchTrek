@@ -6,8 +6,13 @@ import com.search.trek.infrastructure.client.ai.minimax.entity.chat.ChatRes;
 import com.search.trek.infrastructure.client.ai.minimax.entity.embedding.EmbeddingReq;
 import com.search.trek.infrastructure.client.ai.minimax.entity.embedding.EmbeddingRes;
 import com.search.trek.infrastructure.client.ai.minimax.entity.knowledge.CreateKnowledgeReq;
+import com.search.trek.infrastructure.client.ai.minimax.entity.text_to_speech.TextToSpeechReq;
+import com.search.trek.infrastructure.client.ai.minimax.entity.text_to_speech.TextToSpeechRes;
 import io.reactivex.rxjava3.core.Single;
-import retrofit2.http.*;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.POST;
+import retrofit2.http.QueryMap;
 
 
 
@@ -44,5 +49,6 @@ public interface MiniMaxApi {
     @GET("/v1/embedding/query_document")
     Single<JSONObject> queryDocument(@QueryMap JSONObject listKnowledgeReq);
 
-
+    @POST("/v1/t2a_pro")
+    Single<TextToSpeechRes> t2aPro(@Body TextToSpeechReq text);
 }
